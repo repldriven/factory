@@ -10,5 +10,10 @@ hooks/
 .beads-credential-key
 **/.beads/proxieddb/
 
+# gc projects its skills into the city root as symlinks into ~/.gc/cache.
+# Generated + machine-local, so never versioned. Scoped to skills/ so a
+# hand-written .claude/settings.json or CLAUDE.md can still be tracked.
+**/.claude/skills/
+
 # Dolt backups (binary, local recovery only — never versioned in git)
 .dolt-backup/

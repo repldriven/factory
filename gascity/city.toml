@@ -6,6 +6,19 @@ provider = "claude"
 base = "builtin:claude"
 ready_delay_ms = 0
 
+# Model-pinned providers. The model must be passed through args — `model` is
+# not a provider field and is silently dropped if you set it directly.
+# Aliases track the latest model in each family; use full ids to pin exactly.
+[providers.fable]
+base = "builtin:claude"
+args = ["--model", "fable"]
+ready_delay_ms = 0
+
+[providers.opus]
+base = "builtin:claude"
+args = ["--model", "opus"]
+ready_delay_ms = 0
+
 [defaults]
 [defaults.rig]
 [defaults.rig.imports]
@@ -36,3 +49,135 @@ default_branch = "main"
 [rigs.imports.gc]
 source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity/roles"
 version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
+
+# Per-role model split. `dir` is required: each role exists once per rig, and a
+# patch without it fails to resolve. Planning roles think on Fable; the roles
+# that write and review code run on Opus.
+
+
+# Planning -> Fable
+
+[[patches.agent]]
+name = "requirements-planner"
+dir = "mono"
+provider = "fable"
+
+[[patches.agent]]
+name = "task-decomposer"
+dir = "mono"
+provider = "fable"
+
+[[patches.agent]]
+name = "design-author"
+dir = "mono"
+provider = "fable"
+
+[[patches.agent]]
+name = "gap-analyst"
+dir = "mono"
+provider = "fable"
+
+[[patches.agent]]
+name = "requirements-planner"
+dir = "queenswood"
+provider = "fable"
+
+[[patches.agent]]
+name = "task-decomposer"
+dir = "queenswood"
+provider = "fable"
+
+[[patches.agent]]
+name = "design-author"
+dir = "queenswood"
+provider = "fable"
+
+[[patches.agent]]
+name = "gap-analyst"
+dir = "queenswood"
+provider = "fable"
+
+# Implementation and review -> Opus
+
+[[patches.agent]]
+name = "implementation-worker"
+dir = "mono"
+provider = "opus"
+
+[[patches.agent]]
+name = "design-implementation-reviewer"
+dir = "mono"
+provider = "opus"
+
+[[patches.agent]]
+name = "design-test-risk-reviewer"
+dir = "mono"
+provider = "opus"
+
+[[patches.agent]]
+name = "implementation-reviewer"
+dir = "mono"
+provider = "opus"
+
+[[patches.agent]]
+name = "implementation-worker"
+dir = "queenswood"
+provider = "opus"
+
+[[patches.agent]]
+name = "design-implementation-reviewer"
+dir = "queenswood"
+provider = "opus"
+
+[[patches.agent]]
+name = "design-test-risk-reviewer"
+dir = "queenswood"
+provider = "opus"
+
+[[patches.agent]]
+name = "implementation-reviewer"
+dir = "queenswood"
+provider = "opus"
+
+# Remaining roles. Triage is evidence analysis, so it sits with the planners;
+# synthesis, publishing and run operation sit with the code-facing roles.
+
+[[patches.agent]]
+name = "issue-triager"
+dir = "mono"
+provider = "fable"
+
+[[patches.agent]]
+name = "issue-triager"
+dir = "queenswood"
+provider = "fable"
+
+[[patches.agent]]
+name = "review-synthesizer"
+dir = "mono"
+provider = "opus"
+
+[[patches.agent]]
+name = "publisher"
+dir = "mono"
+provider = "opus"
+
+[[patches.agent]]
+name = "run-operator"
+dir = "mono"
+provider = "opus"
+
+[[patches.agent]]
+name = "review-synthesizer"
+dir = "queenswood"
+provider = "opus"
+
+[[patches.agent]]
+name = "publisher"
+dir = "queenswood"
+provider = "opus"
+
+[[patches.agent]]
+name = "run-operator"
+dir = "queenswood"
+provider = "opus"
