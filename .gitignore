@@ -9,3 +9,6 @@ hooks/
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Dolt backups (binary, local recovery only — never versioned in git)
+.dolt-backup/
