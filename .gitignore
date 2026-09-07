@@ -1,14 +1,14 @@
 # Gas City
 .gc/
-.beads/*
-!.beads/identity.toml
+**/.beads/*
+!**/.beads/identity.toml
 hooks/
 
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
 .beads-credential-key
-.beads/proxieddb/
+**/.beads/proxieddb/
 
 # Dolt backups (binary, local recovery only — never versioned in git)
 .dolt-backup/
