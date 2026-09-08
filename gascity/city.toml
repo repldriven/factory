@@ -61,41 +61,49 @@ version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 name = "requirements-planner"
 dir = "mono"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "task-decomposer"
 dir = "mono"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "design-author"
 dir = "mono"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "gap-analyst"
 dir = "mono"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "requirements-planner"
 dir = "queenswood"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "task-decomposer"
 dir = "queenswood"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "design-author"
 dir = "queenswood"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "gap-analyst"
 dir = "queenswood"
 provider = "fable"
+max_active_sessions = 1
 
 # Implementation and review -> Opus
 
@@ -103,41 +111,49 @@ provider = "fable"
 name = "implementation-worker"
 dir = "mono"
 provider = "opus"
+max_active_sessions = 2
 
 [[patches.agent]]
 name = "design-implementation-reviewer"
 dir = "mono"
 provider = "opus"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "design-test-risk-reviewer"
 dir = "mono"
 provider = "opus"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "implementation-reviewer"
 dir = "mono"
 provider = "opus"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "implementation-worker"
 dir = "queenswood"
 provider = "opus"
+max_active_sessions = 2
 
 [[patches.agent]]
 name = "design-implementation-reviewer"
 dir = "queenswood"
 provider = "opus"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "design-test-risk-reviewer"
 dir = "queenswood"
 provider = "opus"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "implementation-reviewer"
 dir = "queenswood"
 provider = "opus"
+max_active_sessions = 1
 
 # Remaining roles. Triage is evidence analysis, so it sits with the planners;
 # synthesis, publishing and run operation sit with the code-facing roles.
@@ -146,16 +162,19 @@ provider = "opus"
 name = "issue-triager"
 dir = "mono"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "issue-triager"
 dir = "queenswood"
 provider = "fable"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "review-synthesizer"
 dir = "mono"
 provider = "opus"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "publisher"
@@ -171,6 +190,7 @@ provider = "opus"
 name = "review-synthesizer"
 dir = "queenswood"
 provider = "opus"
+max_active_sessions = 1
 
 [[patches.agent]]
 name = "publisher"
