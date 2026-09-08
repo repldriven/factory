@@ -13,12 +13,16 @@
 # Idempotent: existing branches are advanced only if the worktree has moved on,
 # and are never rewound. Safe to run while agents are working.
 #
-# Usage: scripts/snapshot-agent-branches.sh [rig-path]   (default: ../queenswood)
+# Usage: gascity/orders/scripts/snapshot-agent-branches.sh [rig-path]
+# Also runs as the snapshot-agent-branches order. Override with
+# AGENT_SNAPSHOT_RIG / AGENT_SNAPSHOT_MANIFEST.
 
 set -uo pipefail
 
-RIG="${1:-$(cd "$(dirname "$0")/../.." && pwd)/queenswood}"
-MANIFEST="$(cd "$(dirname "$0")/.." && pwd)/agent-branches.tsv"
+# Repo root is three levels up: <repo>/gascity/orders/scripts/<this>
+REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
+RIG="${1:-${AGENT_SNAPSHOT_RIG:-$(dirname "$REPO")/queenswood}}"
+MANIFEST="${AGENT_SNAPSHOT_MANIFEST:-$REPO/agent-branches.tsv}"
 
 [ -d "$RIG/.git" ] || { echo "not a git repo: $RIG" >&2; exit 1; }
 cd "$RIG" || exit 1
