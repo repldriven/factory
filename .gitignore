@@ -17,3 +17,9 @@ hooks/
 
 # Dolt backups (binary, local recovery only — never versioned in git)
 .dolt-backup/
+
+# Stray HOME-relative writes: gc sometimes spawns a process with HOME unset or
+# pointing at the city dir, so bd and python drop their dotfiles here.
+gascity/.config/
+gascity/Library/
+gascity/~/
