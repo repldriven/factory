@@ -5,6 +5,14 @@ provider = "claude"
 [providers.claude]
 base = "builtin:claude"
 ready_delay_ms = 0
+# builtin:claude hardcodes --effort max. It cannot be overridden through args
+# (those are prepended, and the CLI is last-flag-wins) nor through the settings
+# file, but option_defaults set here does win — verified on gc 1.4.1 by reading
+# the spawned command line. Note it is only honoured from city.toml: layering it
+# via `gc config explain -f overlay.toml` is silently dropped, which is what
+# led gastownhall/gascity#3927 to conclude the key was broken.
+[providers.claude.option_defaults]
+effort = "high"
 
 # Model-pinned providers. The model must be passed through args — `model` is
 # not a provider field and is silently dropped if you set it directly.
@@ -13,11 +21,17 @@ ready_delay_ms = 0
 base = "builtin:claude"
 args = ["--model", "fable"]
 ready_delay_ms = 0
+# xhigh is the documented best setting for coding and agentic work, and Claude
+# Code's own default; max costs more for little gain outside hard problems.
+[providers.fable.option_defaults]
+effort = "xhigh"
 
 [providers.opus]
 base = "builtin:claude"
 args = ["--model", "opus"]
 ready_delay_ms = 0
+[providers.opus.option_defaults]
+effort = "xhigh"
 
 [defaults]
 [defaults.rig]
