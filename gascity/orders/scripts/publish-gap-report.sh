@@ -58,6 +58,15 @@ treating a merged report as settled.
 Claude-Session: https://claude.ai/code/session_01M3qxmC6dPHqpMWMyZ6Zfou"
 fi
 git -C "$wt" push --quiet -u origin "$branch"
+
+# The report now lives on the branch, so drop the analyst's copy — but only
+# from the rig root, never from a worktree an agent may still be using. Left
+# in place it blocks `git switch` to the very branch you would edit it on:
+# checkout refuses to overwrite an untracked file of the same name.
+case "$src" in
+    worktrees/*) : ;;
+    *) rm -f "$src" && echo "removed the working copy: $src" ;;
+esac
 gh pr create --base main --head "$branch" \
     --title "Gap analysis for the $tdd TDD" \
     --body "Gap report for \`docs/tdd/$tdd.md\`, written by the gap-analyst.
