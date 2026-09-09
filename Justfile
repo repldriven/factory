@@ -50,7 +50,10 @@ backup-init:
       # fails the pipeline even when the text matched, which silently turned
       # this guard off and repointed stores that already had a destination.
       out=$( cd "$store" && bd backup status 2>&1 || true )
-      if printf '%s' "$out" | grep -q 'Last backup'; then
+      # "Destination:", not "Last backup:" — the latter belongs to bd's own
+      # periodic backup, which is a separate mechanism and is disabled here. A
+      # store can report it while having no Dolt destination at all.
+      if printf '%s' "$out" | grep -q 'Destination:'; then
         echo "  keep $name — already has a destination"
       else
         dest="{{ backups }}/$name"
@@ -82,6 +85,8 @@ backup-status:
     set -euo pipefail
     while IFS=$'\t' read -r name store; do
       echo "### $name"
+      # Both sections matter: "Backup:" is bd's periodic backup (disabled),
+      # "Dolt Backup:" is the destination these recipes push to.
       ( cd "$store" && bd backup status 2>&1 | sed 's/^/  /' ) || true
     done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
 
