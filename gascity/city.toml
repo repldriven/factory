@@ -30,6 +30,16 @@ effort = "xhigh"
 base = "builtin:claude"
 args = ["--model", "opus"]
 ready_delay_ms = 0
+
+# Patrol and monitor agents run constantly and make small, repetitive
+# judgements. Sonnet at medium effort is the right tier for them; Opus at
+# xhigh would burn plan usage on health checks.
+[providers.sonnet]
+base = "builtin:claude"
+args = ["--model", "sonnet"]
+ready_delay_ms = 0
+[providers.sonnet.option_defaults]
+effort = "medium"
 [providers.opus.option_defaults]
 effort = "xhigh"
 
@@ -38,6 +48,9 @@ effort = "xhigh"
 [defaults.rig.imports]
 [defaults.rig.imports.gc]
 source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity/roles"
+version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
+[defaults.rig.imports.gastown]
+source = "https://github.com/gastownhall/gascity-packs/tree/main/gastown"
 version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 
 # [mail]
@@ -215,3 +228,55 @@ provider = "opus"
 name = "run-operator"
 dir = "queenswood"
 provider = "opus"
+
+# Gastown lane: polecat writes code, refinery makes merge decisions, witness
+# patrols rig health. Capped like their gascity counterparts so concurrent
+# workflows queue through each stage rather than doubling up.
+
+[[patches.agent]]
+name = "polecat"
+dir = "mono"
+provider = "opus"
+max_active_sessions = 2
+
+[[patches.agent]]
+name = "refinery"
+dir = "mono"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "witness"
+dir = "mono"
+provider = "sonnet"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "polecat"
+dir = "queenswood"
+provider = "opus"
+max_active_sessions = 2
+
+[[patches.agent]]
+name = "refinery"
+dir = "queenswood"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "witness"
+dir = "queenswood"
+provider = "sonnet"
+max_active_sessions = 1
+
+# HQ patrol/maintenance agents: cheap tier, they poll rather than reason.
+
+[[patches.agent]]
+name = "deacon"
+provider = "sonnet"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "boot"
+provider = "sonnet"
+max_active_sessions = 1
