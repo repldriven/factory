@@ -62,32 +62,39 @@ backup-init:
       fi
     done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
 
-# Dolt-native, so branches and commit history survive, unlike `bd export`.
+# Delegates to the bd pack's mol-dog-backup order, which is also what runs on a
+# 6h cooldown. It talks to the Dolt server, takes a lock, and can rsync offsite;
+# a second implementation here would be a second answer with no owner.
 
-# Push every bead store to its backup destination.
+# Sync every bead store now, rather than waiting for the 6h order.
 backup:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    rc=0
-    while IFS=$'\t' read -r name store; do
-      if ( cd "$store" && bd backup sync ) >/dev/null 2>&1; then
-        echo "  synced $name"
-      else
-        echo "  FAILED $name — no destination? run 'just backup-init'" >&2
-        rc=1
-      fi
-    done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
-    exit $rc
+    gc --city {{ city }} order run mol-dog-backup
 
-# Where each store's backup stands.
+# Reports bytes on disk, not bd's "Last sync" field, which lags: it read 11:54
+# while archives were being written at 12:54. Freezing file mtimes is what the
+# two-day silent failure actually looked like, and the only thing that caught it.
+
+# Whether each backup destination is actually receiving data.
 backup-status:
     #!/usr/bin/env bash
     set -euo pipefail
     while IFS=$'\t' read -r name store; do
-      echo "### $name"
-      # Both sections matter: "Backup:" is bd's periodic backup (disabled),
-      # "Dolt Backup:" is the destination these recipes push to.
-      ( cd "$store" && bd backup status 2>&1 | sed 's/^/  /' ) || true
+      dest=$( (cd "$store" && bd backup status 2>&1 || true) \
+              | sed -n 's|.*Destination: *file://||p' | head -1 )
+      if [ -z "$dest" ]; then
+        echo "  $name: NO DESTINATION — run 'just backup-init'"
+        continue
+      fi
+      newest=$(find "$dest" -type f -name '*.darc' -exec stat -f '%m %N' {} + 2>/dev/null \
+               | sort -rn | head -1)
+      if [ -z "$newest" ]; then
+        echo "  $name: destination configured but empty — $dest"
+        continue
+      fi
+      when=$(date -r "${newest%% *}" '+%Y-%m-%d %H:%M')
+      age=$(( ($(date +%s) - ${newest%% *}) / 60 ))
+      size=$(du -sh "$dest" 2>/dev/null | cut -f1)
+      printf '  %-12s %s  (%s min ago, %s)\n' "$name" "$when" "$age" "$size"
     done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
 
 # --- work ----------------------------------------------------------------
