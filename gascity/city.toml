@@ -286,7 +286,13 @@ name = "deacon"
 provider = "sonnet"
 max_active_sessions = 1
 
+# Suspended 2026-09-09 (mayor, fa-ezby): boot wakes every ~50-65s and its pane
+# dies at the Claude Code splash before the prompt is ever submitted — 266
+# generations since 06:42Z, zero mail sent, so the deacon watchdog has never
+# actually watched. Cycling itself is by design; surviving long enough to act is
+# not happening. Re-enable by removing suspended_on_start once fa-ezby is fixed.
 [[patches.agent]]
 name = "boot"
 provider = "sonnet"
 max_active_sessions = 1
+suspended_on_start = true

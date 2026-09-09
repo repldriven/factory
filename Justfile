@@ -165,6 +165,16 @@ implement-gaps tdd:
 stamp-merge-strategy:
     @bash {{ city }}/orders/scripts/stamp-merge-strategy.sh
 
+# Delivery is wait-idle, so a session that is actually working ignores it.
+
+# Nudge sessions quiet for N minutes — after a rate-limit pause.
+nudge minutes="10" message="continue":
+    @bash {{ city }}/orders/scripts/nudge-stalled.sh {{ city }} "{{ minutes }}" "{{ message }}"
+
+# Which sessions a nudge would reach, without sending anything.
+nudge-dry minutes="10":
+    @bash {{ city }}/orders/scripts/nudge-stalled.sh {{ city }} "{{ minutes }}" "" --dry-run
+
 # Open beads in the rig.
 work:
     gc --city {{ city }} bd list --rig {{ rig }}
