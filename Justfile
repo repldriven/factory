@@ -124,7 +124,10 @@ implement-gaps tdd:
              --rig {{ rig }} --json \
            | jq -r 'if type=="array" then .[0].id else .id end')
     echo "work bead: $bead"
-    gc --city {{ city }} bd update "$bead" \
+    # --rig is required: `gc bd update` does not resolve a rig-scoped id from
+    # the city root, unlike `gc sling`, which does. It is a global flag and
+    # absent from `gc bd update --help`.
+    gc --city {{ city }} bd update "$bead" --rig {{ rig }} \
       --set-metadata merge_strategy=mr --set-metadata target=main
     gc --city {{ city }} sling {{ rig }}/gc.run-operator "$bead" --on build-basic \
       --var artifact_root="docs/plan/gaps/{{ tdd }}" \
