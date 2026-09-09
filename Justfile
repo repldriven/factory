@@ -34,17 +34,30 @@ doctor:
 
 # --- bead state ----------------------------------------------------------
 
-# One-time: point every bead store at a local Dolt backup destination.
+# Every bead store the city knows about, HQ included.
+stores:
+    @bash {{ city }}/orders/scripts/bead-stores.sh {{ city }}
+
+# A store that already has a destination is left alone: repointing it would
+# orphan the history already pushed there.
+
+# One-time: give any store without a backup destination a local one.
 backup-init:
     #!/usr/bin/env bash
     set -euo pipefail
-    for store in "{{ city }}" "{{ repos }}/{{ rig }}" "{{ repos }}/mono"; do
-      [ -d "$store/.beads" ] || continue
-      name=$(basename "$store")
-      dest="{{ backups }}/$name"
-      mkdir -p "$dest"
-      ( cd "$store" && bd backup init "$dest" ) && echo "  $name -> $dest"
-    done
+    while IFS=$'\t' read -r name store; do
+      # `|| true` before the grep: under pipefail a non-zero exit from bd
+      # fails the pipeline even when the text matched, which silently turned
+      # this guard off and repointed stores that already had a destination.
+      out=$( cd "$store" && bd backup status 2>&1 || true )
+      if printf '%s' "$out" | grep -q 'Last backup'; then
+        echo "  keep $name — already has a destination"
+      else
+        dest="{{ backups }}/$name"
+        mkdir -p "$dest"
+        ( cd "$store" && bd backup init "$dest" ) >/dev/null && echo "  init $name -> $dest"
+      fi
+    done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
 
 # Dolt-native, so branches and commit history survive, unlike `bd export`.
 
@@ -52,25 +65,25 @@ backup-init:
 backup:
     #!/usr/bin/env bash
     set -euo pipefail
-    for store in "{{ city }}" "{{ repos }}/{{ rig }}" "{{ repos }}/mono"; do
-      [ -d "$store/.beads" ] || continue
-      name=$(basename "$store")
-      if ( cd "$store" && bd backup status >/dev/null 2>&1 ); then
-        ( cd "$store" && bd backup sync ) && echo "  synced $name"
+    rc=0
+    while IFS=$'\t' read -r name store; do
+      if ( cd "$store" && bd backup sync ) >/dev/null 2>&1; then
+        echo "  synced $name"
       else
-        echo "  SKIP $name — no destination; run 'just backup-init'" >&2
+        echo "  FAILED $name — no destination? run 'just backup-init'" >&2
+        rc=1
       fi
-    done
+    done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
+    exit $rc
 
 # Where each store's backup stands.
 backup-status:
     #!/usr/bin/env bash
     set -euo pipefail
-    for store in "{{ city }}" "{{ repos }}/{{ rig }}" "{{ repos }}/mono"; do
-      [ -d "$store/.beads" ] || continue
-      echo "### $(basename "$store")"
+    while IFS=$'\t' read -r name store; do
+      echo "### $name"
       ( cd "$store" && bd backup status 2>&1 | sed 's/^/  /' ) || true
-    done
+    done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
 
 # --- work ----------------------------------------------------------------
 
