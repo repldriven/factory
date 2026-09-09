@@ -1,0 +1,14 @@
+# Gas City leaves every work-bead worktree on a detached HEAD. Agents commit
+# into those, so nothing references the commits and pruning a worktree makes the
+# work unreachable. With build-basic's push=false / open_pr=false defaults there
+# is no other route out either.
+#
+# This gives each worktree HEAD a branch (agent/<bead>) and records the set.
+# Idempotent and safe alongside running agents: it only fast-forwards a branch,
+# never rewinds, and warns rather than moving a diverged one.
+[order]
+description = "Branch agent worktree HEADs so pruning cannot lose their commits"
+trigger = "cooldown"
+interval = "15m"
+exec = "$ORDER_DIR/scripts/snapshot-agent-branches.sh"
+timeout = "2m"
