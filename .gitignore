@@ -23,3 +23,8 @@ hooks/
 gascity/.config/
 gascity/Library/
 gascity/~/
+
+# Derived state: rewritten by the snapshot order every 15 minutes, and
+# rebuildable from the agent/* branches. It now lives under XDG state; this
+# keeps an older checkout from re-tracking it.
+agent-branches.tsv

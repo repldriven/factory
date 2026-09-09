@@ -13,6 +13,11 @@
 # Idempotent: existing branches are advanced only if the worktree has moved on,
 # and are never rewound. Safe to run while agents are working.
 #
+# The manifest is written outside the repository. It is derived state — every
+# row can be rebuilt from the agent/* branches, which are the durable artifact —
+# and the order rewrites it every 15 minutes, so tracking it would leave the
+# working tree permanently dirty.
+#
 # Usage: gascity/orders/scripts/snapshot-agent-branches.sh [rig-path]
 # Also runs as the snapshot-agent-branches order. Override with
 # AGENT_SNAPSHOT_RIG / AGENT_SNAPSHOT_MANIFEST.
@@ -22,7 +27,9 @@ set -uo pipefail
 # Repo root is three levels up: <repo>/gascity/orders/scripts/<this>
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
 RIG="${1:-${AGENT_SNAPSHOT_RIG:-$(dirname "$REPO")/queenswood}}"
-MANIFEST="${AGENT_SNAPSHOT_MANIFEST:-$REPO/agent-branches.tsv}"
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/gascity/$(basename "$REPO")"
+MANIFEST="${AGENT_SNAPSHOT_MANIFEST:-$STATE/agent-branches.tsv}"
+mkdir -p "$(dirname "$MANIFEST")" || exit 1
 
 [ -d "$RIG/.git" ] || { echo "not a git repo: $RIG" >&2; exit 1; }
 cd "$RIG" || exit 1
