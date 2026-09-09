@@ -130,6 +130,13 @@ gap-analysis tdd:
       --var subject_path=docs/tdd/{{ tdd }}.md \
       --var report_path="docs/tdd/gaps/$name.md"
 
+# The analyst is report-only and commits nothing, so this is what makes the
+# report reviewable: branch it, push it, open a PR, argue in the diff.
+
+# Open a PR for a gap report the analyst has written.
+gaps-pr tdd:
+    @bash {{ city }}/orders/scripts/publish-gap-report.sh "{{ repos }}/{{ rig }}" "{{ tdd }}"
+
 # Take a gap report to a pull request, via the gastown polecat and refinery.
 implement-gaps tdd:
     #!/usr/bin/env bash
