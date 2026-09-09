@@ -17,3 +17,14 @@ hooks/
 
 # Dolt backups (binary, local recovery only — never versioned in git)
 .dolt-backup/
+
+# Stray HOME-relative writes: gc sometimes spawns a process with HOME unset or
+# pointing at the city dir, so bd and python drop their dotfiles here.
+gascity/.config/
+gascity/Library/
+gascity/~/
+
+# Derived state: rewritten by the snapshot order every 15 minutes, and
+# rebuildable from the agent/* branches. It now lives under XDG state; this
+# keeps an older checkout from re-tracking it.
+agent-branches.tsv
