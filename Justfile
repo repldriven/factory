@@ -16,8 +16,8 @@ _default:
 
 # --- running the city ----------------------------------------------------
 
-# Back up bead state, then start the city under the supervisor.
-up: backup
+# Start the city under the supervisor.
+up:
     gc --city {{ city }} start
 
 # Stop the city.
@@ -38,6 +38,12 @@ doctor:
 stores:
     @bash {{ city }}/orders/scripts/bead-stores.sh {{ city }}
 
+# Backup itself is native and needs no recipe: `bd` syncs every 15m with
+# backup.enabled=true, the pack's mol-dog-backup order syncs Dolt remotes every
+# 6h, and `gc doctor` holds bd-backup-freshness, -size and -state. What is not
+# native is creating the destination in the first place, which is why this
+# survives — the freshness check went green only once every store had one.
+#
 # A store that already has a destination is left alone: repointing it would
 # orphan the history already pushed there.
 
@@ -60,41 +66,6 @@ backup-init:
         mkdir -p "$dest"
         ( cd "$store" && bd backup init "$dest" ) >/dev/null && echo "  init $name -> $dest"
       fi
-    done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
-
-# Delegates to the bd pack's mol-dog-backup order, which is also what runs on a
-# 6h cooldown. It talks to the Dolt server, takes a lock, and can rsync offsite;
-# a second implementation here would be a second answer with no owner.
-
-# Sync every bead store now, rather than waiting for the 6h order.
-backup:
-    gc --city {{ city }} order run mol-dog-backup
-
-# Reports bytes on disk, not bd's "Last sync" field, which lags: it read 11:54
-# while archives were being written at 12:54. Freezing file mtimes is what the
-# two-day silent failure actually looked like, and the only thing that caught it.
-
-# Whether each backup destination is actually receiving data.
-backup-status:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    while IFS=$'\t' read -r name store; do
-      dest=$( (cd "$store" && bd backup status 2>&1 || true) \
-              | sed -n 's|.*Destination: *file://||p' | head -1 )
-      if [ -z "$dest" ]; then
-        echo "  $name: NO DESTINATION — run 'just backup-init'"
-        continue
-      fi
-      newest=$(find "$dest" -type f -name '*.darc' -exec stat -f '%m %N' {} + 2>/dev/null \
-               | sort -rn | head -1)
-      if [ -z "$newest" ]; then
-        echo "  $name: destination configured but empty — $dest"
-        continue
-      fi
-      when=$(date -r "${newest%% *}" '+%Y-%m-%d %H:%M')
-      age=$(( ($(date +%s) - ${newest%% *}) / 60 ))
-      size=$(du -sh "$dest" 2>/dev/null | cut -f1)
-      printf '  %-12s %s  (%s min ago, %s)\n' "$name" "$when" "$age" "$size"
     done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
 
 # --- work ----------------------------------------------------------------

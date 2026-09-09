@@ -290,9 +290,9 @@ max_active_sessions = 1
 # dies at the Claude Code splash before the prompt is ever submitted — 266
 # generations since 06:42Z, zero mail sent, so the deacon watchdog has never
 # actually watched. Cycling itself is by design; surviving long enough to act is
-# not happening. Re-enable by removing suspended_on_start once fa-ezby is fixed.
+# not happening. Re-enable with "gc agent resume gastown.boot" once fa-ezby is fixed.
 [[patches.agent]]
 name = "boot"
 provider = "sonnet"
 max_active_sessions = 1
-suspended_on_start = true
+suspended = true
