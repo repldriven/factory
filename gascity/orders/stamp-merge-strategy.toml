@@ -1,0 +1,14 @@
+# The refinery reads merge_strategy off the work bead and defaults to "direct",
+# which cannot land on a PR-only main. Nothing in the packs sets it, and
+# decomposition creates work beads mid-run, so a value set at launch never
+# reaches them. This stamps the beads already in the polecat/refinery lane.
+#
+# Five minutes rather than fifteen: the window between a bead being assigned to
+# a polecat and the refinery reading its metadata is the whole point, and an
+# order costs no model tokens.
+[order]
+description = "Stamp merge_strategy=mr on lane work beads that carry none"
+trigger = "cooldown"
+interval = "5m"
+exec = "$ORDER_DIR/scripts/stamp-merge-strategy.sh"
+timeout = "2m"
