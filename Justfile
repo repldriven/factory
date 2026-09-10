@@ -164,6 +164,17 @@ nudge minutes="10" message="continue":
 nudge-dry minutes="10":
     @bash {{ city }}/orders/scripts/nudge-stalled.sh {{ city }} "{{ minutes }}" "" --dry-run
 
+# Reads the Claude transcripts, which are the only live source: stats-cache.json
+# is refreshed only when a human runs /stats, and rate-limit figures reach the
+# statusline without being persisted anywhere. Agent sessions are included —
+# the supervisor sets CLAUDE_CONFIG_DIR, so they write to the same tree.
+#
+# Ranked by output tokens rather than request count, since that is what costs.
+
+# Token usage by model. `hours` of 0 means since local midnight.
+usage hours="24":
+    @bash {{ city }}/orders/scripts/usage-by-model.sh {{ hours }}
+
 # Open beads in the rig.
 work:
     gc --city {{ city }} bd list --rig {{ rig }}
