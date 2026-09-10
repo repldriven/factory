@@ -49,9 +49,6 @@ effort = "xhigh"
 [defaults.rig.imports.gc]
 source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity/roles"
 version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
-[defaults.rig.imports.gastown]
-source = "https://github.com/gastownhall/gascity-packs/tree/main/gastown"
-version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 
 # [mail]
 # retention_ttl controls how long read messages are retained before purge.
@@ -76,20 +73,26 @@ default_branch = "main"
 [rigs.imports.gc]
 source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity/roles"
 version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
-# The polecat lane rebases onto its base branch and then runs these. Each
-# defaults to empty, which means skip — so until they are named here the
-# lane's "do not proceed with failures" contract has nothing to fail.
-# They are `just` recipes rather than commands so the rig owns what they
-# do: queenswood carries them in justfiles/gastown.just, and retuning one
-# there needs no change in this file.
-[rigs.formula_vars]
-setup_command = "just gastown-setup"
-lint_command = "just gastown-lint"
-test_command = "just gastown-test"
-
 # Per-role model split. `dir` is required: each role exists once per rig, and a
-# patch without it fails to resolve. Planning roles think on Fable; the roles
-# that write and review code run on Opus.
+# patch without it fails to resolve.
+#
+# Fable is reserved for the two roles that exercise judgement rather than
+# transform an artifact someone has already argued over:
+#
+#   gap-analyst      the only role doing discovery — it reads a TDD, traces
+#                    source, and decides what is actually wrong. Everything
+#                    downstream derives from that report, and a weak one wastes
+#                    the whole run quietly rather than failing.
+#   task-decomposer  verified emergent, not templated: build-basic's decompose
+#                    step is entirely artifact schema and convoy mechanics, and
+#                    "integration" appears nowhere in the pack's workflow assets.
+#                    The banks run's WI-10, a verification pass over the
+#                    integrated branch, was the decomposer's own idea and is what
+#                    made that run recoverable.
+#
+# Everything else that used to be Fable now runs on Opus. run-operator is on
+# Sonnet: it closed 82 beads, more than three times any other role, and its work
+# is orchestration — advancing steps, routing, recording artifacts.
 
 
 # Planning -> Fable
@@ -97,7 +100,7 @@ test_command = "just gastown-test"
 [[patches.agent]]
 name = "requirements-planner"
 dir = "mono"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -109,7 +112,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "design-author"
 dir = "mono"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -121,7 +124,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "requirements-planner"
 dir = "queenswood"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -133,7 +136,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "design-author"
 dir = "queenswood"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -198,13 +201,13 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "issue-triager"
 dir = "mono"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
 name = "issue-triager"
 dir = "queenswood"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -221,7 +224,7 @@ provider = "opus"
 [[patches.agent]]
 name = "run-operator"
 dir = "mono"
-provider = "opus"
+provider = "sonnet"
 
 [[patches.agent]]
 name = "review-synthesizer"
@@ -237,56 +240,4 @@ provider = "opus"
 [[patches.agent]]
 name = "run-operator"
 dir = "queenswood"
-provider = "opus"
-
-# Gastown lane: polecat writes code, refinery makes merge decisions, witness
-# patrols rig health. Capped like their gascity counterparts so concurrent
-# workflows queue through each stage rather than doubling up.
-
-[[patches.agent]]
-name = "polecat"
-dir = "mono"
-provider = "opus"
-max_active_sessions = 2
-
-[[patches.agent]]
-name = "refinery"
-dir = "mono"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
-name = "witness"
-dir = "mono"
 provider = "sonnet"
-max_active_sessions = 1
-
-[[patches.agent]]
-name = "polecat"
-dir = "queenswood"
-provider = "opus"
-max_active_sessions = 2
-
-[[patches.agent]]
-name = "refinery"
-dir = "queenswood"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
-name = "witness"
-dir = "queenswood"
-provider = "sonnet"
-max_active_sessions = 1
-
-# HQ patrol/maintenance agents: cheap tier, they poll rather than reason.
-
-[[patches.agent]]
-name = "deacon"
-provider = "sonnet"
-max_active_sessions = 1
-
-[[patches.agent]]
-name = "boot"
-provider = "sonnet"
-max_active_sessions = 1
