@@ -186,7 +186,12 @@ wi run="":
 # role holds each step. Pass --all as the second arg to include stages the
 # formula never reached.
 steps run="" all="":
-    @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} "{{ run }}" "{{ all }}"
+    @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} build-basic "{{ run }}" "{{ all }}"
+
+# Steps of a gap-analysis run. Report-only, so there are no work items and no
+# `wi` view to go with it — the three steps are the whole run.
+analysis run="" all="":
+    @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} gap-analysis "{{ run }}" "{{ all }}"
 
 # Open beads in the rig.
 work:

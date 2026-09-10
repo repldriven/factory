@@ -11,13 +11,13 @@
 # Order comes from `gc formula show`, so steps that have not started yet still
 # appear in DAG order rather than sorting to the end.
 #
-# Usage: run-steps.sh <city> <rig> [run-root-id] [--all]
+# Usage: run-steps.sh <city> <rig> <formula> [run-root-id] [--all]
 set -uo pipefail
-CITY="${1:?city}"; RIG="${2:?rig}"; RUN="${3:-}"; ALL="${4:-}"
-exec python3 - "$CITY" "$RIG" "$RUN" "$ALL" <<'PY'
+CITY="${1:?city}"; RIG="${2:?rig}"; FORMULA="${3:?formula}"; RUN="${4:-}"; ALL="${5:-}"
+exec python3 - "$CITY" "$RIG" "$FORMULA" "$RUN" "$ALL" <<'PY'
 import json, re, subprocess, sys, datetime
 
-city, rig, run, allflag = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+city, rig, formula, run, allflag = sys.argv[1:6]
 show_all = allflag == "--all"
 
 def gc(*a):
@@ -25,7 +25,7 @@ def gc(*a):
 
 def norm(ref):
     """Fold a step_ref onto the stage it belongs to."""
-    ref = re.sub(r"^build-basic\.", "", ref or "")
+    ref = re.sub(r"^" + re.escape(formula) + r"\.", "", ref or "")
     ref = re.sub(r"\.iteration\.\d+", "", ref)
     ref = re.sub(r"-scope-check$", "", ref)
     return re.sub(r"\.spec$", "", ref)
@@ -49,9 +49,9 @@ except Exception:
 beads = d if isinstance(d, list) else (d.get("issues") or [])
 
 if not run:
-    cands = sorted((b for b in beads if (b.get("title") or "") == "build-basic"),
+    cands = sorted((b for b in beads if (b.get("title") or "") == formula),
                    key=lambda b: b.get("created_at") or "")
-    if not cands: sys.exit(f"no build-basic run found in rig {rig}")
+    if not cands: sys.exit(f"no {formula} run found in rig {rig}")
     run = cands[-1]["id"]
 
 root = next((b for b in beads if b.get("id") == run), {})
@@ -61,8 +61,9 @@ print(f"run: {run}  {root.get('status','?')}  "
       f"{'ran' if ended else 'running'} {dur(started, ended or now)}")
 
 meta = root.get("metadata") or {}
-for k in ("gc.publish_outcome", "gc.publish_pr_url"):
-    if meta.get(k): print(f"     {k}: {meta[k]}")
+for k in ("gc.var.subject_path", "gc.var.report_path",
+          "gc.build.publish_status", "gc.build.publish_pr_url"):
+    if meta.get(k): print(f"     {k.rsplit('.', 1)[-1]}: {meta[k]}")
 
 # Fold the run's step beads onto stages.
 stages = {}
@@ -90,7 +91,7 @@ for b in beads:
 
 # Formula order, normalised the same way.
 order, seen = [], set()
-for line in gc("formula","show", meta.get("gc.formula_name") or "build-basic").splitlines():
+for line in gc("formula","show", meta.get("gc.formula_name") or formula).splitlines():
     mm = re.match(r"^\s*[├└]──\s+([\w.\-]+):", line)
     if mm:
         k = norm(mm.group(1))
