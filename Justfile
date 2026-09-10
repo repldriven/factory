@@ -182,6 +182,12 @@ usage hours="24":
 wi run="":
     @bash {{ city }}/orders/scripts/work-items.sh {{ city }} {{ rig }} "{{ run }}"
 
+# Pipeline steps for a build-basic run — the stage above `wi`, showing which
+# role holds each step. Pass --all as the second arg to include stages the
+# formula never reached.
+steps run="" all="":
+    @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} "{{ run }}" "{{ all }}"
+
 # Open beads in the rig.
 work:
     gc --city {{ city }} bd list --rig {{ rig }}
