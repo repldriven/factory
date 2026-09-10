@@ -16,8 +16,8 @@ _default:
 
 # --- running the city ----------------------------------------------------
 
-# Back up bead state, then start the city under the supervisor.
-up: backup
+# Start the city under the supervisor.
+up:
     gc --city {{ city }} start
 
 # Stop the city.
@@ -38,6 +38,12 @@ doctor:
 stores:
     @bash {{ city }}/orders/scripts/bead-stores.sh {{ city }}
 
+# Backup itself is native and needs no recipe: `bd` syncs every 15m with
+# backup.enabled=true, the pack's mol-dog-backup order syncs Dolt remotes every
+# 6h, and `gc doctor` holds bd-backup-freshness, -size and -state. What is not
+# native is creating the destination in the first place, which is why this
+# survives — the freshness check went green only once every store had one.
+#
 # A store that already has a destination is left alone: repointing it would
 # orphan the history already pushed there.
 
@@ -60,41 +66,6 @@ backup-init:
         mkdir -p "$dest"
         ( cd "$store" && bd backup init "$dest" ) >/dev/null && echo "  init $name -> $dest"
       fi
-    done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
-
-# Delegates to the bd pack's mol-dog-backup order, which is also what runs on a
-# 6h cooldown. It talks to the Dolt server, takes a lock, and can rsync offsite;
-# a second implementation here would be a second answer with no owner.
-
-# Sync every bead store now, rather than waiting for the 6h order.
-backup:
-    gc --city {{ city }} order run mol-dog-backup
-
-# Reports bytes on disk, not bd's "Last sync" field, which lags: it read 11:54
-# while archives were being written at 12:54. Freezing file mtimes is what the
-# two-day silent failure actually looked like, and the only thing that caught it.
-
-# Whether each backup destination is actually receiving data.
-backup-status:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    while IFS=$'\t' read -r name store; do
-      dest=$( (cd "$store" && bd backup status 2>&1 || true) \
-              | sed -n 's|.*Destination: *file://||p' | head -1 )
-      if [ -z "$dest" ]; then
-        echo "  $name: NO DESTINATION — run 'just backup-init'"
-        continue
-      fi
-      newest=$(find "$dest" -type f -name '*.darc' -exec stat -f '%m %N' {} + 2>/dev/null \
-               | sort -rn | head -1)
-      if [ -z "$newest" ]; then
-        echo "  $name: destination configured but empty — $dest"
-        continue
-      fi
-      when=$(date -r "${newest%% *}" '+%Y-%m-%d %H:%M')
-      age=$(( ($(date +%s) - ${newest%% *}) / 60 ))
-      size=$(du -sh "$dest" 2>/dev/null | cut -f1)
-      printf '  %-12s %s  (%s min ago, %s)\n' "$name" "$when" "$age" "$size"
     done < <(bash {{ city }}/orders/scripts/bead-stores.sh {{ city }})
 
 # --- work ----------------------------------------------------------------
@@ -137,14 +108,24 @@ gap-analysis tdd:
 gaps-pr tdd:
     @bash {{ city }}/orders/scripts/publish-gap-report.sh "{{ repos }}/{{ rig }}" "{{ tdd }}"
 
-# Take a gap report to a pull request, via the gastown polecat and refinery.
+# Take a gap report to a pull request, all the way through gascity.
 implement-gaps tdd:
     #!/usr/bin/env bash
     set -euo pipefail
-    # build-basic commits into detached-HEAD worktrees, and its publish stage
-    # operates on the rig branch, which never carries that work — on its own it
-    # has no route to a PR. Delegating implementation to the polecat does: it
-    # pushes a feature branch and hands to the refinery, which opens the PR.
+    # Pure gascity: implementation stays on gc.implementation-worker and the
+    # publish stage raises the PR. Publish does not push gc.work_branch — it
+    # builds a branch from the approved worktree anchor and pushes that, which is
+    # what publish.md means by "a finalized result can be an approved source
+    # anchor/worktree". Proven on qw-0yjm: publish_outcome=published, PR #618,
+    # with no polecat and no refinery.
+    #
+    # push and open_pr default to false, which is the whole reason the banks run
+    # produced no PR — a launch variable left at its default, not the structural
+    # gap it looked like at the time.
+    #
+    # Unproven: that run had one work item, so the anchor was the whole change.
+    # Whether publish integrates ten worktrees is what the next TDD answers;
+    # there is no integration step between implement and publish.
     report=$(bash {{ city }}/orders/scripts/latest-gap-report.sh \
                "{{ repos }}/{{ rig }}" "{{ tdd }}")
     [ -n "$report" ] || { echo "no gap report for {{ tdd }}; run 'just gap-analysis {{ tdd }}'" >&2; exit 1; }
@@ -153,17 +134,59 @@ implement-gaps tdd:
              --rig {{ rig }} --json \
            | jq -r 'if type=="array" then .[0].id else .id end')
     echo "work bead: $bead"
-    gc --city {{ city }} bd update "$bead" \
+    # --rig is required: `gc bd update` does not resolve a rig-scoped id from
+    # the city root, unlike `gc sling`, which does. It is a global flag and
+    # absent from `gc bd update --help`.
+    #
+    # merge_strategy is inert while implementation is gascity's: the refinery is
+    # its only reader and nothing routes there. Kept because it costs one call
+    # and is the difference between a PR and a push refused at a protected main
+    # the moment anything does.
+    gc --city {{ city }} bd update "$bead" --rig {{ rig }} \
       --set-metadata merge_strategy=mr --set-metadata target=main
     gc --city {{ city }} sling {{ rig }}/gc.run-operator "$bead" --on build-basic \
       --var artifact_root="docs/plan/gaps/{{ tdd }}" \
       --var plan_path="$report" \
-      --var implementation_formula=mol-polecat-work \
-      --var implementation_target=gastown.polecat
+      --var push=true \
+      --var open_pr=true
 
 # Stamp merge_strategy=mr on work beads that lack it. Also runs as an order.
 stamp-merge-strategy:
     @bash {{ city }}/orders/scripts/stamp-merge-strategy.sh
+
+# Delivery is wait-idle, so a session that is actually working ignores it.
+
+# Nudge sessions quiet for N minutes — after a rate-limit pause.
+nudge minutes="10" message="continue":
+    @bash {{ city }}/orders/scripts/nudge-stalled.sh {{ city }} "{{ minutes }}" "{{ message }}"
+
+# Which sessions a nudge would reach, without sending anything.
+nudge-dry minutes="10":
+    @bash {{ city }}/orders/scripts/nudge-stalled.sh {{ city }} "{{ minutes }}" "" --dry-run
+
+# Reads the Claude transcripts, which are the only live source: stats-cache.json
+# is refreshed only when a human runs /stats, and rate-limit figures reach the
+# statusline without being persisted anywhere. Agent sessions are included —
+# the supervisor sets CLAUDE_CONFIG_DIR, so they write to the same tree.
+#
+# Ranked by output tokens rather than request count, since that is what costs.
+
+# Token usage by model. `hours` of 0 means since local midnight.
+usage hours="24":
+    @bash {{ city }}/orders/scripts/usage-by-model.sh {{ hours }}
+
+# Scoped by the run's implementation convoy, because WI numbers restart every
+# run — a title match alone mixes this run's WI-1 with the last one's.
+
+# Work items for a build-basic run, newest unless a run id is given.
+wi run="":
+    @bash {{ city }}/orders/scripts/work-items.sh {{ city }} {{ rig }} "{{ run }}"
+
+# Pipeline steps for a build-basic run — the stage above `wi`, showing which
+# role holds each step. Pass --all as the second arg to include stages the
+# formula never reached.
+steps run="" all="":
+    @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} "{{ run }}" "{{ all }}"
 
 # Open beads in the rig.
 work:
