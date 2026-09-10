@@ -15,6 +15,11 @@ version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 commit = "3b3b89f2011e06d84459aa7bea1552382f13930a"
 fetched = "2026-09-09T08:34:25Z"
 
+[packs."https://github.com/gastownhall/gascity-packs/tree/main/pr-pipeline"]
+version = "sha:f69ec02b39e04b1febc3ced4c47fd4972f706e91"
+commit = "f69ec02b39e04b1febc3ced4c47fd4972f706e91"
+fetched = "2026-09-10T07:52:52Z"
+
 [packs."https://github.com/gastownhall/gascity/tree/main/examples/bd"]
 version = "sha:f895c0ff47d6ee9334ed282a416387eb5b084d24"
 commit = "f895c0ff47d6ee9334ed282a416387eb5b084d24"
