@@ -171,11 +171,20 @@ dir = "mono"
 provider = "opus"
 max_active_sessions = 1
 
+# Work items drain into their own worktrees and declare their dependencies, so
+# width costs nothing in correctness: the integration item carries a dependency
+# on every other item and cannot start early however wide the pool is. The DAG
+# is the real limit — a decomposition with five dependency-free items runs five
+# ways whatever this says.
+#
+# The one thing a worktree does not isolate is the Docker daemon `just test`
+# brings up. Concurrent suites collided on it once already, and reported the
+# collision as 16 test failures and a hang rather than as a conflict.
 [[patches.agent]]
 name = "implementation-worker"
 dir = "queenswood"
 provider = "opus"
-max_active_sessions = 2
+max_active_sessions = 10
 
 [[patches.agent]]
 name = "design-implementation-reviewer"
