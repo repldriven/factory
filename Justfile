@@ -108,7 +108,7 @@ gap-analysis tdd:
 gaps-pr tdd:
     @bash {{ city }}/orders/scripts/publish-gap-report.sh "{{ repos }}/{{ rig }}" "{{ tdd }}"
 
-# Take a gap report to a pull request, via the gastown polecat and refinery.
+# Take a gap report to a pull request, all the way through gascity.
 implement-gaps tdd:
     #!/usr/bin/env bash
     set -euo pipefail
