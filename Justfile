@@ -112,10 +112,20 @@ gaps-pr tdd:
 implement-gaps tdd:
     #!/usr/bin/env bash
     set -euo pipefail
-    # build-basic commits into detached-HEAD worktrees, and its publish stage
-    # operates on the rig branch, which never carries that work — on its own it
-    # has no route to a PR. Delegating implementation to the polecat does: it
-    # pushes a feature branch and hands to the refinery, which opens the PR.
+    # Pure gascity: implementation stays on gc.implementation-worker and the
+    # publish stage raises the PR. Publish does not push gc.work_branch — it
+    # builds a branch from the approved worktree anchor and pushes that, which is
+    # what publish.md means by "a finalized result can be an approved source
+    # anchor/worktree". Proven on qw-0yjm: publish_outcome=published, PR #618,
+    # with no polecat and no refinery.
+    #
+    # push and open_pr default to false, which is the whole reason the banks run
+    # produced no PR — a launch variable left at its default, not the structural
+    # gap it looked like at the time.
+    #
+    # Unproven: that run had one work item, so the anchor was the whole change.
+    # Whether publish integrates ten worktrees is what the next TDD answers;
+    # there is no integration step between implement and publish.
     report=$(bash {{ city }}/orders/scripts/latest-gap-report.sh \
                "{{ repos }}/{{ rig }}" "{{ tdd }}")
     [ -n "$report" ] || { echo "no gap report for {{ tdd }}; run 'just gap-analysis {{ tdd }}'" >&2; exit 1; }
@@ -127,13 +137,18 @@ implement-gaps tdd:
     # --rig is required: `gc bd update` does not resolve a rig-scoped id from
     # the city root, unlike `gc sling`, which does. It is a global flag and
     # absent from `gc bd update --help`.
+    #
+    # merge_strategy is inert while implementation is gascity's: the refinery is
+    # its only reader and nothing routes there. Kept because it costs one call
+    # and is the difference between a PR and a push refused at a protected main
+    # the moment anything does.
     gc --city {{ city }} bd update "$bead" --rig {{ rig }} \
       --set-metadata merge_strategy=mr --set-metadata target=main
     gc --city {{ city }} sling {{ rig }}/gc.run-operator "$bead" --on build-basic \
       --var artifact_root="docs/plan/gaps/{{ tdd }}" \
       --var plan_path="$report" \
-      --var implementation_formula=mol-polecat-work \
-      --var implementation_target=gastown.polecat
+      --var push=true \
+      --var open_pr=true
 
 # Stamp merge_strategy=mr on work beads that lack it. Also runs as an order.
 stamp-merge-strategy:
