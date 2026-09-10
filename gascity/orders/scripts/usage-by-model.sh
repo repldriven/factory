@@ -65,12 +65,18 @@ def h(n):
     return str(n)
 
 print(f"claude token usage — {label}")
-print(f"{'model':<22}{'reqs':>7}{'input':>10}{'output':>10}{'cache rd':>11}{'cache wr':>10}")
+print(f"{'model':<22}{'reqs':>7}{'output':>9}{'cache rd':>10}{'cache wr':>10}{'avg ctx':>10}")
 tot = {"n":0,"in":0,"out":0,"cr":0,"cw":0}
 # Output tokens dominate cost, so rank by them rather than by request count.
 for model, a in sorted(agg.items(), key=lambda kv: -kv[1]["out"]):
-    print(f"{model:<22}{a['n']:>7}{h(a['in']):>10}{h(a['out']):>10}{h(a['cr']):>11}{h(a['cw']):>10}")
+    ctx = a["cr"] // max(a["n"], 1)
+    print(f"{model:<22}{a['n']:>7}{h(a['out']):>9}{h(a['cr']):>10}{h(a['cw']):>10}{h(ctx):>10}")
     for k in tot: tot[k] += a[k]
-print(f"{'-'*70}")
-print(f"{'total':<22}{tot['n']:>7}{h(tot['in']):>10}{h(tot['out']):>10}{h(tot['cr']):>11}{h(tot['cw']):>10}")
+print(f"{'-'*68}")
+print(f"{'total':<22}{tot['n']:>7}{h(tot['out']):>9}{h(tot['cr']):>10}{h(tot['cw']):>10}{'':>10}")
+# Cache reads are the discount, not the waste: uncached input was only
+# {input} today. What drives them is avg ctx x turns, so the lever is a
+# smaller context or fewer turns, never disabling the cache.
+print(f"\nuncached input: {h(tot['in'])}   —  cache reads are ~{tot['cr']//max(tot['in'],1)}x that,")
+print("and cost a fraction per token. avg ctx is what to watch: it is paid every turn.")
 PY
