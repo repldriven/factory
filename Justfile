@@ -175,6 +175,13 @@ nudge-dry minutes="10":
 usage hours="24":
     @bash {{ city }}/orders/scripts/usage-by-model.sh {{ hours }}
 
+# Scoped by the run's implementation convoy, because WI numbers restart every
+# run — a title match alone mixes this run's WI-1 with the last one's.
+
+# Work items for a build-basic run, newest unless a run id is given.
+wi run="":
+    @bash {{ city }}/orders/scripts/work-items.sh {{ city }} {{ rig }} "{{ run }}"
+
 # Open beads in the rig.
 work:
     gc --city {{ city }} bd list --rig {{ rig }}
