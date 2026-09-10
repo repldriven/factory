@@ -18,17 +18,6 @@ version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 # The city-local mayor deliberately shadows gastown's.
 shadow = "silent"
 
-# Author-side PR discipline. Imported for mol-pr-review, an 11-category
-# scorecard over an outgoing PR, which is independent of how the PR was
-# produced. Pinned newer than the packs above because pr-pipeline did not
-# exist at 3b3b89f2 — imports pin per pack, so those stay where they are.
-#
-# The pack is v0.1.0 and its own README marks parts "vapor phase — needs
-# validation"; its issue-driven authoring chain is not adopted here.
-[imports.pr-pipeline]
-source = "https://github.com/gastownhall/gascity-packs/tree/main/pr-pipeline"
-version = "sha:f69ec02b39e04b1febc3ced4c47fd4972f706e91"
-
 [[named_session]]
 template = "mayor"
 mode = "always"
