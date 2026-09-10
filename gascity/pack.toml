@@ -12,11 +12,6 @@ version = "sha:f895c0ff47d6ee9334ed282a416387eb5b084d24"
 [imports.gascity]
 source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity"
 version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
-[imports.gastown]
-source = "https://github.com/gastownhall/gascity-packs/tree/main/gastown"
-version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
-# The city-local mayor deliberately shadows gastown's.
-shadow = "silent"
 
 [[named_session]]
 template = "mayor"
