@@ -42,8 +42,28 @@ wt=$(mktemp -d)/pub
 git worktree add --quiet --detach "$wt" origin/main
 trap 'git worktree remove --force "$wt" 2>/dev/null || true' EXIT
 
+# Rebuild the branch from the base rather than reusing whatever is there.
+# A run that fails after the branch is created but before the push -- a
+# rejected guard, a lint failure, an interrupt -- leaves it behind, pinned
+# to whatever origin/main was at the time. Reusing it then rebuilt the
+# report on that stale commit, so a fix merged in between had no effect
+# and the retry failed identically to the first attempt, which reads as
+# the fix not working.
+#
+# Only when it was never pushed. Once the branch is on the remote it is
+# under review, and this script's whole premise is that disagreements get
+# pushed onto it, so the remote is the base and nothing is discarded.
+if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    git fetch origin "$branch" --quiet
+    git -C "$wt" switch --quiet --force-create "$branch" "origin/$branch"
+else
+    git -C "$wt" switch --quiet --force-create "$branch"
+fi
+
+# After the switch, not before it: switching onto a branch that already
+# carries the report refuses to overwrite an untracked file of the same
+# name, which is the shape the copy used to create.
 cp "$src" "$wt/docs/tdd/gaps/$name"
-git -C "$wt" switch --quiet --create "$branch" 2>/dev/null || git -C "$wt" switch --quiet "$branch"
 git -C "$wt" add "docs/tdd/gaps/$name"
 if git -C "$wt" diff --cached --quiet; then
     echo "nothing to commit — the report is already on this branch"
