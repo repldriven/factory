@@ -19,7 +19,7 @@
 set -uo pipefail
 CITY="${1:?city}"; RIG="${2:?rig}"; RUN="${3:-}"
 exec python3 - "$CITY" "$RIG" "$RUN" <<'PY'
-import json, subprocess, sys, datetime
+import json, re, subprocess, sys, datetime
 
 city, rig, run = sys.argv[1], sys.argv[2], sys.argv[3]
 def gc(*a):
@@ -74,9 +74,11 @@ except Exception: sys.exit("could not read convoy " + cid)
 kids = conv.get("children") or []
 prog = conv.get("progress") or {}
 done, total = prog.get("closed", 0), prog.get("total", len(kids))
+# A decomposer may split an item, giving WI-9a and WI-9b, so the number and the
+# suffix sort separately; an int() on "9b" is what used to crash this view.
 def key(c):
-    t = c.get("title") or ""
-    return int(t.split("-")[1].split(":")[0]) if t.startswith("WI-") and t[3:4].isdigit() else 999
+    m = re.match(r"WI-(\d+)([A-Za-z]*)", c.get("title") or "")
+    return (int(m.group(1)), m.group(2)) if m else (999, "")
 
 def state(c, b):
     if c.get("status") == "closed": return "closed"
