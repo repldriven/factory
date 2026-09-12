@@ -147,11 +147,20 @@ max_active_sessions = 1
 
 # Implementation and review -> Opus
 
+# gc's UserPromptSubmit hook injects a context-usage advisory whose urgent
+# tier tells the agent to `gc session reset` itself or, if told to stay up,
+# to hold at a seam. Neither branch continues the work: the controller never
+# commits a reset for a pool session holding a bead, and "hold" stalled a
+# 14-item convoy three times on 2026-09-11/12. On 1.4.1 the tier also fires
+# at ~19% of real usage, because the 200k fallback is used for claude-opus-5.
+# Off entirely: Claude Code's own compaction handles the window, and the
+# handoff protocol stays available to an agent that chooses it.
 [[patches.agent]]
 name = "implementation-worker"
 dir = "mono"
 provider = "opus"
 max_active_sessions = 2
+env = { GC_INJECT_CONTEXT = "0" }
 
 [[patches.agent]]
 name = "design-implementation-reviewer"
@@ -185,6 +194,7 @@ name = "implementation-worker"
 dir = "queenswood"
 provider = "opus"
 max_active_sessions = 10
+env = { GC_INJECT_CONTEXT = "0" }
 
 [[patches.agent]]
 name = "design-implementation-reviewer"
