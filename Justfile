@@ -150,6 +150,46 @@ implement-gaps tdd:
       --var push=true \
       --var open_pr=true
 
+# The gap recipes repair a TDD; this builds one. The requirements stage reads
+# the bead and the TDD and decides what the minimum is, so the recipe names no
+# section: a TDD that says "validate on one domain first" gets that slice, and
+# one that does not gets the smallest end-to-end path with the reason written
+# down. The newest gap report, when there is one, goes in the brief because it
+# is the record of what the TDD already has — for a proposal, nothing.
+#
+# context_path, not plan_path: plan_path means "create or reuse the plan here".
+# The webhooks gap run seeded it with the report, and the plan stage had to
+# notice that writing the plan there would have destroyed its own input.
+
+# Build the minimum viable product of a TDD's Proposed Solution.
+implement-proposed-mvp tdd:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    doc="docs/tdd/{{ tdd }}.md"
+    [ -f "{{ repos }}/{{ rig }}/$doc" ] || { echo "no TDD at $doc" >&2; exit 1; }
+    brief="Build the minimum viable product of $doc: the smallest part of its \
+    Proposed Solution that proves the design end to end in this repository. \
+    Where the TDD names a first slice, or a domain to validate on first, that \
+    is the MVP, with the prerequisite steps the TDD attaches to it; otherwise \
+    choose the smallest end-to-end path and say why. Nothing from later \
+    slices, and nothing from Known Limitations."
+    report=$(bash {{ city }}/orders/scripts/latest-gap-report.sh \
+               "{{ repos }}/{{ rig }}" "{{ tdd }}")
+    [ -z "$report" ] || brief="$brief The newest gap report, $report, is the \
+    record of what the TDD already has; read it before fixing the scope."
+    bead=$(gc --city {{ city }} bd create \
+             "Build the {{ tdd }} TDD's minimum viable product ($doc)" \
+             --rig {{ rig }} --json --description "$brief" \
+           | jq -r 'if type=="array" then .[0].id else .id end')
+    echo "work bead: $bead"
+    gc --city {{ city }} bd update "$bead" --rig {{ rig }} \
+      --set-metadata merge_strategy=mr --set-metadata target=main
+    gc --city {{ city }} sling {{ rig }}/gc.run-operator "$bead" --on build-basic \
+      --var artifact_root="docs/plan/gaps/{{ tdd }}-mvp" \
+      --var context_path="$doc" \
+      --var push=true \
+      --var open_pr=true
+
 # Stamp merge_strategy=mr on work beads that lack it. Also runs as an order.
 stamp-merge-strategy:
     @bash {{ city }}/orders/scripts/stamp-merge-strategy.sh
@@ -186,7 +226,12 @@ wi run="":
 # role holds each step. Pass --all as the second arg to include stages the
 # formula never reached.
 steps run="" all="":
-    @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} "{{ run }}" "{{ all }}"
+    @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} build-basic "{{ run }}" "{{ all }}"
+
+# Steps of a gap-analysis run. Report-only, so there are no work items and no
+# `wi` view to go with it — the three steps are the whole run.
+analysis run="" all="":
+    @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} gap-analysis "{{ run }}" "{{ all }}"
 
 # Open beads in the rig.
 work:

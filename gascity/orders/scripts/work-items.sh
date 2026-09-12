@@ -9,11 +9,17 @@
 # `gc convoy status --json` gives membership but no timestamps, so the two are
 # joined: membership from the convoy, times from the bead list.
 #
+# The convoy's own status is not enough to say what is happening. A drained item
+# reports `open` whether a worker holds it or it is still waiting its turn — the
+# drain never moves it to in_progress. What separates the two is metadata.work_dir,
+# which gc sets when the item is given its worktree, so that is what STATUS reports:
+# closed / working / queued.
+#
 # Usage: work-items.sh <city> <rig> [run-root-id]   (default: newest build-basic)
 set -uo pipefail
 CITY="${1:?city}"; RIG="${2:?rig}"; RUN="${3:-}"
 exec python3 - "$CITY" "$RIG" "$RUN" <<'PY'
-import json, subprocess, sys, datetime
+import json, re, subprocess, sys, datetime
 
 city, rig, run = sys.argv[1], sys.argv[2], sys.argv[3]
 def gc(*a):
@@ -68,21 +74,35 @@ except Exception: sys.exit("could not read convoy " + cid)
 kids = conv.get("children") or []
 prog = conv.get("progress") or {}
 done, total = prog.get("closed", 0), prog.get("total", len(kids))
-print(f"\nconvoy {cid}  {done}/{total} closed")
-print(f"  {'ITEM':<6}{'STATUS':<13}{'DURATION':>10}{'IDLE':>7}  TITLE")
-
+# A decomposer may split an item, giving WI-9a and WI-9b, so the number and the
+# suffix sort separately; an int() on "9b" is what used to crash this view.
 def key(c):
-    t = c.get("title") or ""
-    return int(t.split("-")[1].split(":")[0]) if t.startswith("WI-") and t[3:4].isdigit() else 999
+    m = re.match(r"WI-(\d+)([A-Za-z]*)", c.get("title") or "")
+    return (int(m.group(1)), m.group(2)) if m else (999, "")
+
+def state(c, b):
+    if c.get("status") == "closed": return "closed"
+    return "working" if ((b.get("metadata") or {}).get("work_dir")) else "queued"
+
+tally = {}
+for c in kids:
+    st = state(c, by_id.get(c["id"], {}))
+    tally[st] = tally.get(st, 0) + 1
+live = ", ".join(f"{tally[k]} {k}" for k in ("working", "queued") if tally.get(k))
+print(f"\nconvoy {cid}  {done}/{total} closed" + (f"  ({live})" if live else ""))
+print(f"  {'ITEM':<6}{'STATUS':<13}{'DURATION':>10}{'IDLE':>7}  TITLE")
 
 for c in sorted(kids, key=key):
     b = by_id.get(c["id"], {})
+    st = state(c, b)
     cre, upd = when(b.get("created_at")), when(b.get("updated_at"))
-    clo = when(b.get("closed_at")) or (upd if c.get("status") == "closed" else None)
+    clo = when(b.get("closed_at")) or (upd if st == "closed" else None)
     title = c.get("title") or ""
     item = title.split(":")[0] if title.startswith("WI-") else c["id"]
     rest = title.split(": ", 1)[1] if ": " in title else title
-    duration = dur(cre, clo or now)
-    idle = "-" if c.get("status") == "closed" else dur(upd, now)
-    print(f"  {item:<6}{c.get('status','?'):<13}{duration:>10}{idle:>7}  {rest[:52]}")
+    # A queued item is not running, so it has no duration to report — only an age,
+    # which reads as progress it has not made.
+    duration = dur(cre, clo or now) if st != "queued" else "-"
+    idle = "-" if st == "closed" else dur(upd, now)
+    print(f"  {item:<6}{st:<13}{duration:>10}{idle:>7}  {rest[:52]}")
 PY
