@@ -73,9 +73,7 @@ else
 Written by the gap-analyst against docs/tdd/$tdd.md. Report-only: every
 finding is traced in source, and the ones predicting runtime behaviour
 say so. Argue with it here — push edits onto this branch — rather than
-treating a merged report as settled.
-
-Claude-Session: https://claude.ai/code/session_01M3qxmC6dPHqpMWMyZ6Zfou"
+treating a merged report as settled."
 fi
 git -C "$wt" push --quiet -u origin "$branch"
 
@@ -96,6 +94,4 @@ beads, branches or source, so this branch is how it becomes reviewable.
 
 Read the findings in the diff. Where you disagree, push an edit onto this
 branch — \`just implement-gaps $tdd\` reads the report from the rig's
-checkout, so only what is merged here goes on to drive work.
-
-https://claude.ai/code/session_01M3qxmC6dPHqpMWMyZ6Zfou" 2>&1 | tail -2
+checkout, so only what is merged here goes on to drive work." 2>&1 | tail -2
