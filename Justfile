@@ -5,14 +5,31 @@
 # the working directory, which does not happen from the repository root, so
 # every recipe passes --city explicitly. `bd` does not walk up at all, so the
 # bead recipes cd into each store.
+#
+# Every recipe that touches a rig takes the rig's name first — `just wi mono`,
+# `just implement-proposed-mvp queenswood access` — and none has a default: a
+# default is a bead created, or a run launched, in the wrong repository by a
+# forgotten argument. `_rig` checks the name against the city before any recipe
+# acts on it. Rig checkouts are siblings of this repository.
 
 city    := justfile_directory() / "gascity"
-rig     := "queenswood"
 repos   := parent_directory(justfile_directory())
 backups := env('XDG_STATE_HOME', env('HOME') / ".local/state") / "gascity/backups"
 
 _default:
     @just --list --unsorted
+
+# The rig must be one the city knows, and its checkout must be the sibling
+# directory the recipes assume. The HQ is a rig too, but holds no work.
+_rig rig:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rigs=$(gc --city {{ city }} rig list --json \
+           | jq -r --arg city "{{ city }}" \
+               '(if type=="array" then . else .rigs // [] end)[] | select(.path != $city) | "\(.name)\t\(.path)"')
+    path=$(printf '%s\n' "$rigs" | awk -F'\t' -v n="{{ rig }}" '$1 == n { print $2 }')
+    [ -n "$path" ] || { echo "unknown rig '{{ rig }}'; the city has: $(printf '%s\n' "$rigs" | cut -f1 | paste -sd' ' -)" >&2; exit 1; }
+    [ "$path" = "{{ repos }}/{{ rig }}" ] || { echo "rig '{{ rig }}' is checked out at $path, not {{ repos }}/{{ rig }}" >&2; exit 1; }
 
 # --- running the city ----------------------------------------------------
 
@@ -71,22 +88,23 @@ backup-init:
 # --- work ----------------------------------------------------------------
 
 # TDDs with no gap report yet.
-tdds-without-gaps:
+tdds-without-gaps rig: (_rig rig)
     #!/usr/bin/env bash
     set -euo pipefail
+    shopt -s nullglob  # a rig with no docs/tdd/ lists nothing, not a literal *
     for f in "{{ repos }}/{{ rig }}"/docs/tdd/*.md; do
       n=$(basename "$f" .md)
       compgen -G "{{ repos }}/{{ rig }}/docs/tdd/gaps/$n*.md" >/dev/null || echo "$n"
     done
 
 # The newest gap report for a TDD, or nothing if it has never been analysed.
-latest-gaps tdd:
+latest-gaps rig tdd: (_rig rig)
     @bash {{ city }}/orders/scripts/latest-gap-report.sh "{{ repos }}/{{ rig }}" "{{ tdd }}"
 
 # Analysis is iterative, so reports are timestamped and kept, never overwritten.
 
 # Report where a TDD and the code disagree.
-gap-analysis tdd:
+gap-analysis rig tdd: (_rig rig)
     #!/usr/bin/env bash
     set -euo pipefail
     gaps="{{ repos }}/{{ rig }}/docs/tdd/gaps"
@@ -105,11 +123,11 @@ gap-analysis tdd:
 # report reviewable: branch it, push it, open a PR, argue in the diff.
 
 # Open a PR for a gap report the analyst has written.
-gaps-pr tdd:
+gaps-pr rig tdd: (_rig rig)
     @bash {{ city }}/orders/scripts/publish-gap-report.sh "{{ repos }}/{{ rig }}" "{{ tdd }}"
 
 # Take a gap report to a pull request, all the way through gascity.
-implement-gaps tdd:
+implement-gaps rig tdd: (_rig rig)
     #!/usr/bin/env bash
     set -euo pipefail
     # Pure gascity: implementation stays on gc.implementation-worker and the
@@ -128,7 +146,7 @@ implement-gaps tdd:
     # there is no integration step between implement and publish.
     report=$(bash {{ city }}/orders/scripts/latest-gap-report.sh \
                "{{ repos }}/{{ rig }}" "{{ tdd }}")
-    [ -n "$report" ] || { echo "no gap report for {{ tdd }}; run 'just gap-analysis {{ tdd }}'" >&2; exit 1; }
+    [ -n "$report" ] || { echo "no gap report for {{ tdd }} in {{ rig }}; run 'just gap-analysis {{ rig }} {{ tdd }}'" >&2; exit 1; }
     echo "report: $report"
     bead=$(gc --city {{ city }} bd create "Close the {{ tdd }} TDD gaps ($report)" \
              --rig {{ rig }} --json \
@@ -162,7 +180,7 @@ implement-gaps tdd:
 # notice that writing the plan there would have destroyed its own input.
 
 # Build the minimum viable product of a TDD's Proposed Solution.
-implement-proposed-mvp tdd:
+implement-proposed-mvp rig tdd: (_rig rig)
     #!/usr/bin/env bash
     set -euo pipefail
     doc="docs/tdd/{{ tdd }}.md"
@@ -219,20 +237,20 @@ usage hours="24":
 # run — a title match alone mixes this run's WI-1 with the last one's.
 
 # Work items for a build-basic run, newest unless a run id is given.
-wi run="":
+wi rig run="": (_rig rig)
     @bash {{ city }}/orders/scripts/work-items.sh {{ city }} {{ rig }} "{{ run }}"
 
 # Pipeline steps for a build-basic run — the stage above `wi`, showing which
 # role holds each step. Pass --all as the second arg to include stages the
 # formula never reached.
-steps run="" all="":
+steps rig run="" all="": (_rig rig)
     @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} build-basic "{{ run }}" "{{ all }}"
 
 # Steps of a gap-analysis run. Report-only, so there are no work items and no
 # `wi` view to go with it — the three steps are the whole run.
-analysis run="" all="":
+analysis rig run="" all="": (_rig rig)
     @bash {{ city }}/orders/scripts/run-steps.sh {{ city }} {{ rig }} gap-analysis "{{ run }}" "{{ all }}"
 
 # Open beads in the rig.
-work:
+work rig: (_rig rig)
     gc --city {{ city }} bd list --rig {{ rig }}

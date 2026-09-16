@@ -37,16 +37,20 @@ Rig paths are machine-local and live in `.gc/site.toml`, which is not versioned.
 the same rigs without inheriting anyone's directory layout. Add or remove rigs with
 `gc rig add` / `gc rig remove`.
 
+The `Justfile` at the repository root wraps the recurring workflows (`just` lists
+them). Every rig-scoped recipe takes the rig name first — `just wi mono`,
+`just implement-proposed-mvp queenswood access` — so one set of recipes drives
+every rig, and a rig is never assumed.
+
 ## Roles and models
 
 Each rig imports the role set from the `gascity/roles` pack, pinned by commit in
-`packs.lock`. Roles are split across two models:
+`packs.lock`. Roles are split across three models:
 
-- **Fable** — `requirements-planner`, `task-decomposer`, `design-author`,
-  `gap-analyst`, `issue-triager`
-- **Opus** — `implementation-worker`, `implementation-reviewer`,
-  `design-implementation-reviewer`, `design-test-risk-reviewer`,
-  `review-synthesizer`, `publisher`, `run-operator`
+- **Fable** — `gap-analyst`, `task-decomposer`: the two roles that exercise
+  judgement rather than transform an artifact someone has already argued over
+- **Opus** — every other role
+- **Sonnet** — `run-operator`, whose work is orchestration
 
 Two things to know before editing that split in `city.toml`:
 

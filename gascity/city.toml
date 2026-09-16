@@ -96,6 +96,9 @@ version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 
 
 # Planning -> Fable
+#
+# TEMPORARY (2026-09-13): Fable usage is exhausted, so gap-analyst and
+# task-decomposer run on Opus until it resets. Put them back on "fable".
 
 [[patches.agent]]
 name = "requirements-planner"
@@ -106,7 +109,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "task-decomposer"
 dir = "mono"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -118,7 +121,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "gap-analyst"
 dir = "mono"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -130,7 +133,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "task-decomposer"
 dir = "queenswood"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -142,7 +145,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "gap-analyst"
 dir = "queenswood"
-provider = "fable"
+provider = "opus"
 max_active_sessions = 1
 
 # Implementation and review -> Opus
@@ -155,11 +158,23 @@ max_active_sessions = 1
 # at ~19% of real usage, because the 200k fallback is used for claude-opus-5.
 # Off entirely: Claude Code's own compaction handles the window, and the
 # handoff protocol stays available to an agent that chooses it.
+#
+# Work items drain into their own worktrees and declare their dependencies, so
+# width costs nothing in correctness: the integration item carries a dependency
+# on every other item and cannot start early however wide the pool is. The DAG
+# is the real limit — a decomposition with five dependency-free items runs five
+# ways whatever this says. Both rigs run the same width.
+#
+# The one thing a worktree does not isolate is the Docker daemon `just test`
+# brings up. Concurrent suites collided on it once already in queenswood, and
+# reported the collision as 16 test failures and a hang rather than as a
+# conflict. mono v0.0.23 made its test systems refuse a shared port, which is
+# the fix for that shape of collision.
 [[patches.agent]]
 name = "implementation-worker"
 dir = "mono"
 provider = "opus"
-max_active_sessions = 2
+max_active_sessions = 10
 env = { GC_INJECT_CONTEXT = "0" }
 
 [[patches.agent]]
@@ -180,15 +195,6 @@ dir = "mono"
 provider = "opus"
 max_active_sessions = 1
 
-# Work items drain into their own worktrees and declare their dependencies, so
-# width costs nothing in correctness: the integration item carries a dependency
-# on every other item and cannot start early however wide the pool is. The DAG
-# is the real limit — a decomposition with five dependency-free items runs five
-# ways whatever this says.
-#
-# The one thing a worktree does not isolate is the Docker daemon `just test`
-# brings up. Concurrent suites collided on it once already, and reported the
-# collision as 16 test failures and a hang rather than as a conflict.
 [[patches.agent]]
 name = "implementation-worker"
 dir = "queenswood"
