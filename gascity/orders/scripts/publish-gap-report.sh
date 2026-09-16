@@ -19,6 +19,7 @@
 set -euo pipefail
 rig="${1:?rig path required}"
 tdd="${2:?tdd name required}"
+rig_name=$(basename "$rig")
 cd "$rig"
 
 shopt -s nullglob
@@ -93,5 +94,5 @@ Report-only by construction: the formula is mode=report and may not touch
 beads, branches or source, so this branch is how it becomes reviewable.
 
 Read the findings in the diff. Where you disagree, push an edit onto this
-branch — \`just implement-gaps $tdd\` reads the report from the rig's
+branch — \`just implement-gaps $rig_name $tdd\` reads the report from the rig's
 checkout, so only what is merged here goes on to drive work." 2>&1 | tail -2
