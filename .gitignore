@@ -9,6 +9,8 @@ hooks/
 *.db
 .beads-credential-key
 **/.beads/proxieddb/
+# bd's scope gate, written next to the store rather than inside it
+**/*.gate.lock
 
 # gc projects its skills into the city root as symlinks into ~/.gc/cache.
 # Generated + machine-local, so never versioned. Scoped to skills/ so a
