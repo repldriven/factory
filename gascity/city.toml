@@ -96,9 +96,6 @@ version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 
 
 # Planning -> Fable
-#
-# TEMPORARY (2026-09-13): Fable usage is exhausted, so gap-analyst and
-# task-decomposer run on Opus until it resets. Put them back on "fable".
 
 [[patches.agent]]
 name = "requirements-planner"
@@ -109,7 +106,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "task-decomposer"
 dir = "mono"
-provider = "opus"
+provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -121,7 +118,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "gap-analyst"
 dir = "mono"
-provider = "opus"
+provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -133,7 +130,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "task-decomposer"
 dir = "queenswood"
-provider = "opus"
+provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -145,7 +142,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "gap-analyst"
 dir = "queenswood"
-provider = "opus"
+provider = "fable"
 max_active_sessions = 1
 
 # Implementation and review -> Opus
