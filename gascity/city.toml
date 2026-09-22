@@ -5,26 +5,43 @@ provider = "claude"
 [providers.claude]
 base = "builtin:claude"
 ready_delay_ms = 0
+# builtin:claude hardcodes --effort max. It cannot be overridden through args
+# (those are prepended, and the CLI is last-flag-wins) nor through the settings
+# file, but option_defaults set here does win — verified on gc 1.4.1 by reading
+# the spawned command line. Note it is only honoured from city.toml: layering it
+# via `gc config explain -f overlay.toml` is silently dropped, which is what
+# led gastownhall/gascity#3927 to conclude the key was broken.
 [providers.claude.option_defaults]
 effort = "high"
+
+# Model-pinned providers. The model must be passed through args — `model` is
+# not a provider field and is silently dropped if you set it directly.
+# Aliases track the latest model in each family; use full ids to pin exactly.
 [providers.fable]
 base = "builtin:claude"
 args = ["--model", "fable"]
 ready_delay_ms = 0
+# xhigh is the documented best setting for coding and agentic work, and Claude
+# Code's own default; max costs more for little gain outside hard problems.
 [providers.fable.option_defaults]
 effort = "xhigh"
+
 [providers.opus]
 base = "builtin:claude"
 args = ["--model", "opus"]
 ready_delay_ms = 0
-[providers.opus.option_defaults]
-effort = "xhigh"
+
+# Patrol and monitor agents run constantly and make small, repetitive
+# judgements. Sonnet at medium effort is the right tier for them; Opus at
+# xhigh would burn plan usage on health checks.
 [providers.sonnet]
 base = "builtin:claude"
 args = ["--model", "sonnet"]
 ready_delay_ms = 0
 [providers.sonnet.option_defaults]
 effort = "medium"
+[providers.opus.option_defaults]
+effort = "xhigh"
 
 [defaults]
 [defaults.rig]
@@ -32,6 +49,12 @@ effort = "medium"
 [defaults.rig.imports.gc]
 source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity/roles"
 version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
+
+# [mail]
+# retention_ttl controls how long read messages are retained before purge.
+# 0 disables retention; use "168h" for 7 days.
+# "7d" is not a valid Go duration.
+# retention_ttl = "0"
 
 [[rigs]]
 name = "mono"
@@ -59,221 +82,264 @@ default_branch = "main"
 [rigs.imports.gc]
 source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity/roles"
 version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
+# Per-role model split. `dir` is required: each role exists once per rig, and a
+# patch without it fails to resolve.
+#
+# Fable is reserved for the two roles that exercise judgement rather than
+# transform an artifact someone has already argued over:
+#
+#   gap-analyst      the only role doing discovery — it reads a TDD, traces
+#                    source, and decides what is actually wrong. Everything
+#                    downstream derives from that report, and a weak one wastes
+#                    the whole run quietly rather than failing.
+#   task-decomposer  verified emergent, not templated: build-basic's decompose
+#                    step is entirely artifact schema and convoy mechanics, and
+#                    "integration" appears nowhere in the pack's workflow assets.
+#                    The banks run's WI-10, a verification pass over the
+#                    integrated branch, was the decomposer's own idea and is what
+#                    made that run recoverable.
+#
+# Everything else that used to be Fable now runs on Opus. run-operator is on
+# Sonnet: it closed 82 beads, more than three times any other role, and its work
+# is orchestration — advancing steps, routing, recording artifacts.
 
-[patches]
+
+# Planning -> Fable
 
 [[patches.agent]]
-dir = "mono"
 name = "requirements-planner"
+dir = "mono"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono-python"
+name = "task-decomposer"
+dir = "mono"
+provider = "fable"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "design-author"
+dir = "mono"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "gap-analyst"
+dir = "mono"
+provider = "fable"
+max_active_sessions = 1
+
+[[patches.agent]]
 name = "requirements-planner"
+dir = "mono-python"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono"
 name = "task-decomposer"
-provider = "fable"
-max_active_sessions = 1
-
-[[patches.agent]]
 dir = "mono-python"
-name = "task-decomposer"
 provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono"
 name = "design-author"
+dir = "mono-python"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono-python"
-name = "design-author"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
-dir = "mono"
 name = "gap-analyst"
+dir = "mono-python"
 provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono-python"
-name = "gap-analyst"
-provider = "fable"
-max_active_sessions = 1
-
-[[patches.agent]]
-dir = "queenswood"
 name = "requirements-planner"
+dir = "queenswood"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "queenswood"
 name = "task-decomposer"
+dir = "queenswood"
 provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "queenswood"
 name = "design-author"
+dir = "queenswood"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "queenswood"
 name = "gap-analyst"
+dir = "queenswood"
 provider = "fable"
 max_active_sessions = 1
 
+# Implementation and review -> Opus
+
+# gc's UserPromptSubmit hook injects a context-usage advisory whose urgent
+# tier tells the agent to `gc session reset` itself or, if told to stay up,
+# to hold at a seam. Neither branch continues the work: the controller never
+# commits a reset for a pool session holding a bead, and "hold" stalled a
+# 14-item convoy three times on 2026-09-11/12. On 1.4.1 the tier also fires
+# at ~19% of real usage, because the 200k fallback is used for claude-opus-5.
+# Off entirely: Claude Code's own compaction handles the window, and the
+# handoff protocol stays available to an agent that chooses it.
+#
+# Work items drain into their own worktrees and declare their dependencies, so
+# width costs nothing in correctness: the integration item carries a dependency
+# on every other item and cannot start early however wide the pool is. The DAG
+# is the real limit — a decomposition with five dependency-free items runs five
+# ways whatever this says. Every rig runs the same width.
+#
+# The one thing a worktree does not isolate is the Docker daemon `just test`
+# brings up. Concurrent suites collided on it once already in queenswood, and
+# reported the collision as 16 test failures and a hang rather than as a
+# conflict. mono v0.0.23 made its test systems refuse a shared port, which is
+# the fix for that shape of collision.
 [[patches.agent]]
-dir = "mono"
 name = "implementation-worker"
+dir = "mono"
 provider = "opus"
 max_active_sessions = 10
-[patches.agent.env]
-GC_INJECT_CONTEXT = "0"
+env = { GC_INJECT_CONTEXT = "0" }
 
 [[patches.agent]]
-dir = "mono-python"
+name = "design-implementation-reviewer"
+dir = "mono"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "design-test-risk-reviewer"
+dir = "mono"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "implementation-reviewer"
+dir = "mono"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
 name = "implementation-worker"
+dir = "mono-python"
 provider = "opus"
 max_active_sessions = 10
-[patches.agent.env]
-GC_INJECT_CONTEXT = "0"
+env = { GC_INJECT_CONTEXT = "0" }
 
 [[patches.agent]]
-dir = "mono"
 name = "design-implementation-reviewer"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
 dir = "mono-python"
-name = "design-implementation-reviewer"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono"
 name = "design-test-risk-reviewer"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
 dir = "mono-python"
-name = "design-test-risk-reviewer"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono"
 name = "implementation-reviewer"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
 dir = "mono-python"
-name = "implementation-reviewer"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "queenswood"
 name = "implementation-worker"
+dir = "queenswood"
 provider = "opus"
 max_active_sessions = 10
-[patches.agent.env]
-GC_INJECT_CONTEXT = "0"
+env = { GC_INJECT_CONTEXT = "0" }
 
 [[patches.agent]]
-dir = "queenswood"
 name = "design-implementation-reviewer"
+dir = "queenswood"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "queenswood"
 name = "design-test-risk-reviewer"
+dir = "queenswood"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "queenswood"
 name = "implementation-reviewer"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
-dir = "mono"
-name = "issue-triager"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
-dir = "mono-python"
-name = "issue-triager"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
 dir = "queenswood"
+provider = "opus"
+max_active_sessions = 1
+
+# Remaining roles. Triage is evidence analysis, so it sits with the planners;
+# synthesis, publishing and run operation sit with the code-facing roles.
+
+[[patches.agent]]
 name = "issue-triager"
+dir = "mono"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono"
+name = "issue-triager"
+dir = "mono-python"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "issue-triager"
+dir = "queenswood"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
 name = "review-synthesizer"
+dir = "mono"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "mono-python"
-name = "review-synthesizer"
-provider = "opus"
-max_active_sessions = 1
-
-[[patches.agent]]
-dir = "mono"
 name = "publisher"
-provider = "opus"
-
-[[patches.agent]]
-dir = "mono-python"
-name = "publisher"
-provider = "opus"
-
-[[patches.agent]]
 dir = "mono"
+provider = "opus"
+
+[[patches.agent]]
 name = "run-operator"
+dir = "mono"
 provider = "sonnet"
 
 [[patches.agent]]
-dir = "mono-python"
-name = "run-operator"
-provider = "sonnet"
-
-[[patches.agent]]
-dir = "queenswood"
 name = "review-synthesizer"
+dir = "mono-python"
 provider = "opus"
 max_active_sessions = 1
 
 [[patches.agent]]
-dir = "queenswood"
 name = "publisher"
+dir = "mono-python"
 provider = "opus"
 
 [[patches.agent]]
-dir = "queenswood"
 name = "run-operator"
+dir = "mono-python"
+provider = "sonnet"
+
+[[patches.agent]]
+name = "review-synthesizer"
+dir = "queenswood"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "publisher"
+dir = "queenswood"
+provider = "opus"
+
+[[patches.agent]]
+name = "run-operator"
+dir = "queenswood"
 provider = "sonnet"
