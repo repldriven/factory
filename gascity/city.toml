@@ -66,6 +66,15 @@ source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity/roles"
 version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 
 [[rigs]]
+name = "mono-python"
+prefix = "mopy"
+default_branch = "main"
+[rigs.imports]
+[rigs.imports.gc]
+source = "https://github.com/gastownhall/gascity-packs/tree/main/gascity/roles"
+version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
+
+[[rigs]]
 name = "queenswood"
 prefix = "qw"
 default_branch = "main"
@@ -96,9 +105,6 @@ version = "sha:3b3b89f2011e06d84459aa7bea1552382f13930a"
 
 
 # Planning -> Fable
-#
-# TEMPORARY (2026-09-13): Fable usage is exhausted, so gap-analyst and
-# task-decomposer run on Opus until it resets. Put them back on "fable".
 
 [[patches.agent]]
 name = "requirements-planner"
@@ -109,7 +115,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "task-decomposer"
 dir = "mono"
-provider = "opus"
+provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -121,7 +127,31 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "gap-analyst"
 dir = "mono"
+provider = "fable"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "requirements-planner"
+dir = "mono-python"
 provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "task-decomposer"
+dir = "mono-python"
+provider = "fable"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "design-author"
+dir = "mono-python"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "gap-analyst"
+dir = "mono-python"
+provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -133,7 +163,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "task-decomposer"
 dir = "queenswood"
-provider = "opus"
+provider = "fable"
 max_active_sessions = 1
 
 [[patches.agent]]
@@ -145,7 +175,7 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "gap-analyst"
 dir = "queenswood"
-provider = "opus"
+provider = "fable"
 max_active_sessions = 1
 
 # Implementation and review -> Opus
@@ -163,7 +193,7 @@ max_active_sessions = 1
 # width costs nothing in correctness: the integration item carries a dependency
 # on every other item and cannot start early however wide the pool is. The DAG
 # is the real limit — a decomposition with five dependency-free items runs five
-# ways whatever this says. Both rigs run the same width.
+# ways whatever this says. Every rig runs the same width.
 #
 # The one thing a worktree does not isolate is the Docker daemon `just test`
 # brings up. Concurrent suites collided on it once already in queenswood, and
@@ -192,6 +222,31 @@ max_active_sessions = 1
 [[patches.agent]]
 name = "implementation-reviewer"
 dir = "mono"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "implementation-worker"
+dir = "mono-python"
+provider = "opus"
+max_active_sessions = 10
+env = { GC_INJECT_CONTEXT = "0" }
+
+[[patches.agent]]
+name = "design-implementation-reviewer"
+dir = "mono-python"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "design-test-risk-reviewer"
+dir = "mono-python"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "implementation-reviewer"
+dir = "mono-python"
 provider = "opus"
 max_active_sessions = 1
 
@@ -231,6 +286,12 @@ max_active_sessions = 1
 
 [[patches.agent]]
 name = "issue-triager"
+dir = "mono-python"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "issue-triager"
 dir = "queenswood"
 provider = "opus"
 max_active_sessions = 1
@@ -249,6 +310,22 @@ provider = "opus"
 [[patches.agent]]
 name = "run-operator"
 dir = "mono"
+provider = "sonnet"
+
+[[patches.agent]]
+name = "review-synthesizer"
+dir = "mono-python"
+provider = "opus"
+max_active_sessions = 1
+
+[[patches.agent]]
+name = "publisher"
+dir = "mono-python"
+provider = "opus"
+
+[[patches.agent]]
+name = "run-operator"
+dir = "mono-python"
 provider = "sonnet"
 
 [[patches.agent]]

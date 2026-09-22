@@ -64,6 +64,10 @@ fi
 # After the switch, not before it: switching onto a branch that already
 # carries the report refuses to overwrite an untracked file of the same
 # name, which is the shape the copy used to create.
+# mkdir -p because a rig publishing its first report has no docs/tdd/gaps/
+# on main: queenswood's exists only because earlier reports were merged
+# into it by hand.
+mkdir -p "$wt/docs/tdd/gaps"
 cp "$src" "$wt/docs/tdd/gaps/$name"
 git -C "$wt" add "docs/tdd/gaps/$name"
 if git -C "$wt" diff --cached --quiet; then
